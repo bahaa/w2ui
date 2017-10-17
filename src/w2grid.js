@@ -198,6 +198,7 @@
         this.multiSort       = true;
         this.reorderColumns  = false;
         this.reorderRows     = false;
+        this.searchContextRows = 0;
         this.markSearch      = true;
         this.columnTooltip   = 'normal'; // can be normal, top, bottom, left, right
         this.disableCVS      = false;    // disable Column Virtual Scroll
@@ -990,7 +991,43 @@
                     if (match) {
                         if (rec && rec.w2ui)
                             addParent(rec.w2ui.parent_recid);
-                        this.last.searchIds.push(i);
+
+                        if (this.searchContextRows && this.searchContextRows > 0)
+                        {
+                            var beforeItemCount = this.searchContextRows;
+                            var afterItemCount = this.searchContextRows;
+
+                            if (i < beforeItemCount)
+                                beforeItemCount = i;
+
+                            if (i + afterItemCount > this.records.length)
+                                afterItemCount = this.records.length - i;
+
+                            if (beforeItemCount > 0)
+                            {
+                                for (var j = i - beforeItemCount; j < i; j++)
+                                {
+                                    if (this.last.searchIds.indexOf(j) < 0)
+                                        this.last.searchIds.push(j);
+                                }
+                            }
+
+                            if (this.last.searchIds.indexOf(i) < 0)
+                                this.last.searchIds.push(i);
+
+                            if (afterItemCount > 0)
+                            {
+                                for (var j = (i + 1) ; j <= (i + afterItemCount) ; j++)
+                                {
+                                    if (this.last.searchIds.indexOf(j) < 0)
+                                        this.last.searchIds.push(j);
+                                }
+                            }
+                        }
+                        else
+                        {
+                            this.last.searchIds.push(i);
+                        }
                     }
                 }
                 this.total = this.last.searchIds.length;
@@ -2605,13 +2642,16 @@
         // ===================================================
         // --  Action Handlers
 
-        save: function () {
+        save: function (callBack) {
             var obj = this;
             var changes = this.getChanges();
+            var url = (typeof this.url != 'object' ? this.url : this.url.save);
             // event before
             var edata = this.trigger({ phase: 'before', target: this.name, type: 'save', changes: changes });
-            if (edata.isCancelled === true) return;
-            var url = (typeof this.url != 'object' ? this.url : this.url.save);
+            if (edata.isCancelled === true) {
+                if (url && typeof callBack == 'function') callBack({ status: 'error', message: 'Request aborted.' });
+                return;
+            }
             if (url) {
                 this.request('save', { 'changes' : edata.changes }, null,
                     function (data) {
@@ -2621,6 +2661,8 @@
                         }
                         // event after
                         obj.trigger($.extend(edata, { phase: 'after' }));
+                        // call back
+                        if (typeof callBack == 'function') callBack(data);
                     }
                 );
             } else {
@@ -5015,6 +5057,7 @@
                         if (edata.isCancelled === true) {
                             $('#grid_'+ obj.name + '_ghost').remove();
                             obj.refresh();
+                            delete obj.last.move;
                             return;
                         }
                         // default behavior
