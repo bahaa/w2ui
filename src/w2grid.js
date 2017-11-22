@@ -50,8 +50,8 @@
 *   - added focus(), blur(), onFocus, onBlur
 *   - search.simple - if false, will not show up in simple search
 *   - search.operator - default operator to use with search field
-*   - search.operators - array of operators for the serach
-*   - search.hidden - could not be clearned by the user
+*   - search.operators - array of operators for the search
+*   - search.hidden - could not be cleared by the user
 *   - search.value - only for hidden searches
 *   - if .search(val) - search all fields
 *   - refactor reorderRow (not finished)
@@ -151,7 +151,7 @@
         this.postData     = {};
         this.httpHeaders  = {};
         this.toolbar      = {};       // if not empty object; then it is toolbar object
-        this.stateId      = null;     // Custom state name for satateSave, stateRestore and stateReset
+        this.stateId      = null;     // Custom state name for stateSave, stateRestore and stateReset
 
         this.show = {
             header          : false,
@@ -353,7 +353,7 @@
             "hex"     : ['is', 'between'],
             "color"   : ['is', 'begins', 'contains', 'ends'],
             "enum"    : ['in', 'not in']
-            // -- all posible
+            // -- all possible
             // "text"    : ['is', 'begins', 'contains', 'ends'],
             // "number"  : ['is', 'between', 'less:less than', 'more:more than', 'null:is null', 'not null:is not null'],
             // "list"    : ['is', 'null:is null', 'not null:is not null'],
@@ -2381,7 +2381,7 @@
                     }
                 }
             }
-            // ajax ptions
+            // ajax options
             var ajaxOptions = {
                 type     : 'POST',
                 url      : url,
@@ -3279,6 +3279,10 @@
                     }
                 }
             } else {
+                if (event.altKey){
+                    var column = this.getColumn(field);
+                    if (column && column.sortable) this.sort(field, null, (event && (event.ctrlKey || event.metaKey) ? true : false) );
+                }
                 // select entire column
                 if (edata.field == 'line-number') {
                     if (this.getSelection().length >= this.records.length) {
@@ -5204,7 +5208,15 @@
                 _dragData.pressed = true;
 
                 _dragData.timeout = setTimeout(function(){
-                    if ( !_dragData.pressed ) return;
+                    // When dragging a column for reordering, a quick release and a secondary
+                    // click may result in a bug where the column is ghosted to the screen,
+                    // but can no longer be docked back into the header.  It simply floats and you
+                    // can no longer interact with it.
+                    // The erronius event thats fired will have _dragData.numberPreColumnsPresent === 0
+                    // populated, wheras a valid event will not.
+                    // if we see the erronius event, dont allow that second click to register, which results
+                    // in the floating column remaining under the mouse's control.
+                    if ( !_dragData.pressed || _dragData.numberPreColumnsPresent === 0 ) return;
 
                     var edata,
                         columns,
@@ -5912,7 +5924,7 @@
                     - 1; // left is 1xp due to border width
                 var width_box = width_max;
                 var percent = 0;
-                // gridMinWidth processiong
+                // gridMinWidth processing
                 var restart = false;
                 for (var i = 0; i < this.columns.length; i++) {
                     var col = this.columns[i];
